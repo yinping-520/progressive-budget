@@ -48,42 +48,44 @@
   
   <script>
     const request = window.indexedDB.open("toDoList", 1);
-    
-    request.onupgradeneeded = ({ target }) => {
-      const db = target.result;
-      
-      const todoStore = db.createObjectStore("toDos", {
-        keyPath: "id",
-        autoIncrement: true //use with cautious
-      });
-      todoStore.createIndex("timestamp", "timestamp");
-    };
-    
-    request.onsuccess = event => {
-      console.log(request.result);
-      const db = event.target.result;
 
-      const transaction = db.transaction(["toDos"], "readwrite");
-      const toDoStore = transaction.objectStore("toDos");
-      const timestamp = toDoStore.index("timestamp");
-      //const status = toDoStore.index("status")
+    // Create schema
+    request.onupgradeneeded = event => {
+      const db = event.target.result;
       
-      toDoStore.add({
-        status: "complete", 
-        timestamp: new Date(), 
-        task: " draw pictures"})
-        
+      // Creates an object store with a listID keypath that can be used to query on.
+      const toDoListStore = db.createObjectStore("toDoList", {keyPath: "listID"});
+      // Creates a statusIndex that we can query on.
+      toDoListStore.createIndex("statusIndex", "status"); 
+    }
+
+    // Opens a transaction, accesses the toDoList objectStore and statusIndex.
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction(["toDoList"], "readwrite");
+      const toDoListStore = transaction.objectStore("toDoList");
+      const statusIndex = toDoListStore.index("statusIndex");
+
+      // Adds data to our objectStore
+      toDoListStore.add({ listID: "1", status: "complete" });
+      toDoListStore.add({ listID: "2", status: "in-progress" });
+      toDoListStore.add({ listID: "3", status: "complete" });
+      toDoListStore.add({ listID: "4", status: "backlog" });
+     
+      // Return an item by keyPath
+      const getRequest = toDoListStore.get("1");
+      getRequest.onsuccess = () => {
+        console.log(getRequest.result);
       };
-      </script>
-      <script>
-        if ("serviceWorker" in navigator) {
-          window.addEventListener("load", () => {
-            navigator.serviceWorker.register("service-worker.js").then(reg => {
-              console.log("We found your service worker file!", reg);
-            });
-          });
-        }
-      </script>
+
+      // Return an item by index
+      const getRequestIdx = statusIndex.getAll("complete");
+      getRequestIdx.onsuccess = () => {
+        console.log(getRequestIdx.result); 
+      }; 
+    };
+
+  </script>
   
 </body>
 </html>
